@@ -71,9 +71,8 @@ export default function PlanResults({ result }: { result: PlanResult }) {
       <RouteOverview plan={plan} weatherScore={result.weather.weatherScore} />
 
       <div className="grid gap-6 lg:grid-cols-5">
-        <div className="space-y-6 lg:col-span-3">
+        <div className="lg:col-span-3">
           <Timeline plan={plan} />
-          <Stops plan={plan} />
         </div>
         <div className="space-y-6 lg:col-span-2">
           <ExperiencePanel plan={plan} />
@@ -81,6 +80,9 @@ export default function PlanResults({ result }: { result: PlanResult }) {
           <ResearchPanel research={result.travelResearch} />
         </div>
       </div>
+
+      {/* Full-width so the cards distribute across the page instead of stacking */}
+      <Stops plan={plan} />
 
       {result.comparison && <ComparisonTable result={result} />}
 
@@ -178,7 +180,7 @@ function Timeline({ plan }: { plan: VehiclePlan }) {
 function Stops({ plan }: { plan: VehiclePlan }) {
   return (
     <Card title="Stops & discoveries">
-      <div className="space-y-3">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {plan.stops.map((s) => (
           <StopCard key={s.id} stop={s} />
         ))}
