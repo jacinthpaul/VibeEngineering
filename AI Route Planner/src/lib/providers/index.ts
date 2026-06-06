@@ -4,21 +4,32 @@ import { mockRouting } from "./mock/routing";
 import { mockPlaces } from "./mock/places";
 import { mockWeather } from "./mock/weather";
 import { mockLlm } from "./mock/llm";
+import { createClaudeLlm } from "./claude/llm";
+
+export interface ProviderOptions {
+  /** User-supplied Anthropic API key; enables the real Claude LLM provider. */
+  anthropicKey?: string;
+}
 
 /**
- * Returns the active provider set. Today this is always the mock set.
+ * Returns the active provider set.
  *
- * When real API keys are added, branch here on env vars and return real
- * implementations (e.g. GoogleRoutingProvider, ClaudeLlmProvider). The agent
- * pipeline depends only on the Providers interface, so nothing else changes.
+ * Map/route/place/weather are mock today. The LLM provider becomes the real
+ * Claude API when an Anthropic key is supplied (from the Setup panel or the
+ * ANTHROPIC_API_KEY env var). When real Google Maps / weather keys are added,
+ * branch here the same way — the agent pipeline only depends on the interfaces.
  */
-export function getProviders(): Providers {
+export function getProviders(opts: ProviderOptions = {}): Providers {
+  const anthropicKey = opts.anthropicKey || process.env.ANTHROPIC_API_KEY;
+  const aiLive = Boolean(anthropicKey);
+
   return {
     geocode: mockGeocode,
     routing: mockRouting,
     places: mockPlaces,
     weather: mockWeather,
-    llm: mockLlm,
+    llm: aiLive ? createClaudeLlm(anthropicKey!) : mockLlm,
     isMock: true,
+    aiLive,
   };
 }

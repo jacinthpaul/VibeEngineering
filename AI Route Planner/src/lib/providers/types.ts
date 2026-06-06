@@ -74,6 +74,8 @@ export interface Providers {
   places: PlacesProvider;
   weather: WeatherProvider;
   llm: LlmProvider;
-  /** True when these are mock providers. */
+  /** True when the map/route/place data is mocked (no Google Maps key). */
   isMock: boolean;
+  /** True when narratives come from the real Claude API rather than the mock. */
+  aiLive: boolean;
 }

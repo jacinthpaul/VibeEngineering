@@ -17,8 +17,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: parsed.errors.join(" ") }, { status: 422 });
   }
 
+  // Anthropic key (optional) is passed per-request from the Setup panel via a
+  // header so it is never persisted server-side.
+  const anthropicKey = request.headers.get("x-anthropic-key")?.trim() || undefined;
+
   try {
-    const result = await planTrip(parsed.value);
+    const result = await planTrip(parsed.value, { anthropicKey });
     return NextResponse.json(result);
   } catch (err) {
     console.error("planTrip failed", err);

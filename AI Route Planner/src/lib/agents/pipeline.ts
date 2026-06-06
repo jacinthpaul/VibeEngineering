@@ -10,7 +10,8 @@ import type {
   VehiclePlan,
   VehicleType,
 } from "@/lib/domain/types";
-import { getProviders } from "@/lib/providers";
+import { getProviders, type ProviderOptions } from "@/lib/providers";
+import { mockLlm } from "@/lib/providers/mock/llm";
 import { discoverAttractions } from "./attractions";
 import { discoverPitStops } from "./pitStops";
 import { buildVehiclePlan, formatDuration } from "./itinerary";
@@ -19,8 +20,17 @@ function vehiclesFor(sel: TripRequest["vehicle"]): VehicleType[] {
   return sel === "both" ? ["motorcycle", "car"] : [sel];
 }
 
-export async function planTrip(req: TripRequest): Promise<PlanResult> {
-  const p = getProviders();
+export async function planTrip(
+  req: TripRequest,
+  opts: ProviderOptions = {},
+): Promise<PlanResult> {
+  const p = getProviders(opts);
+  // If a live AI call fails, fall back to mock narrative and surface the reason.
+  let aiError: string | undefined;
+  const onAiFailure = (err: unknown) => {
+    if (!p.aiLive) throw err;
+    aiError = err instanceof Error ? err.message : "Claude request failed.";
+  };
 
   // 1. Geocode both endpoints (in parallel).
   const [startPlace, destinationPlace] = await Promise.all([
@@ -29,10 +39,13 @@ export async function planTrip(req: TripRequest): Promise<PlanResult> {
   ]);
 
   // 2. Weather + travel research are vehicle-independent — fetch once.
-  const [weather, travelResearch] = await Promise.all([
-    p.weather.getWeather(destinationPlace.coordinates, req.date),
-    p.llm.travelResearch(startPlace, destinationPlace),
-  ]);
+  const weather = await p.weather.getWeather(destinationPlace.coordinates, req.date);
+  const travelResearch = await p.llm
+    .travelResearch(startPlace, destinationPlace)
+    .catch((err) => {
+      onAiFailure(err);
+      return mockLlm.travelResearch(startPlace, destinationPlace);
+    });
 
   // 3. Per vehicle: route → attractions + pit stops → itinerary.
   const vehiclePlans: VehiclePlan[] = [];
@@ -81,13 +94,17 @@ export async function planTrip(req: TripRequest): Promise<PlanResult> {
     .slice(0, 3)
     .map((s) => s.name);
 
-  const brief = await p.llm.travelBrief({
+  const briefInput = {
     start: startPlace,
     destination: destinationPlace,
     distanceKm: primary.route.distanceKm,
     travelTimeText: formatDuration(primary.totalTripMinutes),
     bestStops,
     weather,
+  };
+  const brief = await p.llm.travelBrief(briefInput).catch((err) => {
+    onAiFailure(err);
+    return mockLlm.travelBrief(briefInput);
   });
 
   // 5. Comparison view when both vehicles were requested.
@@ -105,6 +122,8 @@ export async function planTrip(req: TripRequest): Promise<PlanResult> {
     comparison,
     generatedAt: new Date().toISOString(),
     usingMockData: p.isMock,
+    aiLive: p.aiLive && !aiError,
+    aiError,
   };
 }
 
