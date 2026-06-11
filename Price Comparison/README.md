@@ -22,13 +22,26 @@ npm install
 npm run dev   # http://localhost:3000
 ```
 
+## Deployment
+
+The app is a **static export** (`output: "export"`) — the demo search engine
+is pure TypeScript and runs entirely in the browser, so no server is needed.
+`.github/workflows/deploy-pages.yml` builds and deploys it to GitHub Pages
+on every push that touches this folder:
+
+> https://jacinthpaul.github.io/VibeEngineering/
+
+(`PAGES_BASE_PATH` sets the Next.js `basePath` for the project-pages URL.)
+If you later wire live platform adapters that need server-side fetching,
+drop `output: "export"`, reintroduce an API route, and deploy to a Node
+host such as Vercel instead.
+
 ## Architecture
 
 ```
 src/
   app/
-    page.tsx              # UI shell (client component)
-    api/search/route.ts   # POST /api/search → SearchResult
+    page.tsx              # UI shell (client component) — runs the search engine in-browser
   components/             # SearchForm, PlatformStrip, RecommendationCard, ResultsTable
   lib/
     domain/               # types + request validation

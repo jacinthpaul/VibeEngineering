@@ -2,7 +2,9 @@
 
 import { useMemo, useState } from "react";
 import type { SearchResult } from "@/lib/domain/types";
+import { parseSearchQuery } from "@/lib/domain/validate";
 import { scoreListing } from "@/lib/engine/recommend";
+import { searchAllPlatforms } from "@/lib/engine/search";
 import PlatformStrip from "@/components/PlatformStrip";
 import RecommendationCard from "@/components/RecommendationCard";
 import ResultsTable from "@/components/ResultsTable";
@@ -27,18 +29,15 @@ export default function Home() {
     return m;
   }, [result]);
 
+  // The demo engine is pure TypeScript, so search runs entirely in the
+  // browser — this lets the app deploy as a static export (GitHub Pages).
   async function search(product: string, location: string) {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/search", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ product, location }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Search failed.");
-      setResult(data as SearchResult);
+      const parsed = parseSearchQuery({ product, location });
+      if (!parsed.ok) throw new Error(parsed.errors.join(" "));
+      setResult(await searchAllPlatforms(parsed.value));
     } catch (e) {
       setError(e instanceof Error ? e.message : "Search failed. Please try again.");
       setResult(null);
